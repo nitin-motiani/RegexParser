@@ -1,33 +1,31 @@
 package motiani.regex;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class State {
-	private Map<Character, List<State>> transitionMap;
+	private Map<Character, Set<State>> transitionMap;
 
-	State(Map<Character, List<State>> tMap)
+	State(Map<Character, Set<State>> tMap)
 	{
 		transitionMap = tMap;
 	}
 	
-	public List<State> statesReachableByEmptyPath()
+	private Set<State> emptyPathMoveHelper(Set<State> seenStates)
 	{
-		/* 
-		 * Is this a good way of storing empty moves. Also is explicitly creating a linked list here smart too.
-		 * Since this is a public function which returns list, but due to recursive call we are also relying on 
-		 * the knowledge that we'll get a linked list. Should there be a private helper function to do recursion 
-		 */
-		List<State> emptyCharMoves = transitionMap.get('\0');
+		Set<State> emptyCharMoves = transitionMap.get('\0');
+		seenStates.add(this);
 		if(emptyCharMoves == null)
 			return emptyCharMoves;
 		
-		List<State> possibleStates = new LinkedList<State>(emptyCharMoves);
+		Set<State> possibleStates = new HashSet<State>(emptyCharMoves);
 		
 		for(State emptyCharMove : emptyCharMoves )
 		{
-			List<State> possibleStatesAfterMove = emptyCharMove.statesReachableByEmptyPath();
+			if(seenStates.contains(emptyCharMove))
+				continue;
+			Set<State> possibleStatesAfterMove = emptyCharMove.emptyPathMoveHelper(seenStates);
 			if(possibleStatesAfterMove != null)
 			{
 				possibleStates.addAll(possibleStatesAfterMove);
@@ -37,24 +35,25 @@ public class State {
 		return possibleStates;
 	}
 	
-	public List<State> makeMove(Character c)
+	public Set<State> emptyPathMove()
 	{
-		List<State> possibleStatesByChar = transitionMap.get(c);
+		Set<State> seenStates = new HashSet<State>();
+		return emptyPathMoveHelper(seenStates);
+	}
+	
+	public Set<State> makeMove(Character c)
+	{
+		Set<State> possibleStatesByChar = transitionMap.get(c);
 		if(possibleStatesByChar == null)
 			return possibleStatesByChar;
 		
-		/* Same issue here. Should this new LinkedList() part go in a private function? */
-		List<State> possibleStates = new LinkedList<State>(possibleStatesByChar);
+		/* Should this new HashSet() part go in a private function? */
+		Set<State> possibleStates = new HashSet<State>(possibleStatesByChar);
 		
 		for(State possibleStateByChar : possibleStatesByChar)
 		{
-			List<State> emptyMoveStates = possibleStateByChar.statesReachableByEmptyPath();
+			Set<State> emptyMoveStates = possibleStateByChar.emptyPathMove();
 			
-			/* 
-			 * Using list is bad idea. Now how are we going to handle dups. 
-			 * Also function to get all empty path states need to keep track of seen states or it 
-			 * might cause stack overflow. 
-			 */
 			if(emptyMoveStates != null)
 			{
 				possibleStates.addAll(emptyMoveStates);
